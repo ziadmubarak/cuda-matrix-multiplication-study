@@ -30,11 +30,14 @@ Matrices: 1024 × 1024 × 1024, filled with 1s (so every correct output element 
 | Version | Time | Speedup vs CPU | Speedup vs naive GPU |
 |---|---|---|---|
 | CPU | 3024.56 ms | 1× | — |
+| CPU (BLAS) | 9.02 ms | ~335× | — |
 | GPU naive | 6.82 ms | ~444× | 1× |
 | GPU tiled | 4.25 ms | ~712× | ~1.60× |
 | cuBLAS | 1.41 ms | ~2145× | ~4.83× |
 
-*Hardware: NVIDIA GeForce GTX 1660 Super. GPU kernel times measured with `cudaEvent` (device-side timing, excludes host-device memory transfer). CPU time measured with `std::chrono`, isolated to the compute loop only.*
+![Benchmark results](cuda_matmul_benchmark.png)
+
+*Hardware: NVIDIA GeForce GTX 1660 Super. GPU kernel times measured with `cudaEvent` (device-side timing, excludes host-device memory transfer). CPU time measured with `std::chrono`, isolated to the compute loop only. CPU (BLAS) time averaged over 3 runs.*
 
 ## Why each version performs the way it does
 
@@ -46,10 +49,13 @@ The tiled kernel fixes this by cooperatively loading small blocks ("tiles") of `
 
 **cuBLAS → tiled:** cuBLAS outperforms the hand-written tiled kernel by roughly 3× further. This gap reflects the depth of hardware-specific tuning in NVIDIA's production library — including techniques well beyond what's implemented here, such as register-level blocking, larger effective tile sizes achieved through multiple levels of caching, warp-level primitives, and instruction scheduling tuned to the specific GPU architecture. The comparison is included deliberately: it shows both that the hand-written optimization genuinely worked, and how much further a professionally engineered implementation can go.
 
+**CPU (BLAS):** An OpenBLAS-backed CPU implementation (`cblas_sgemm`), added to give a fair baseline against the unoptimized naive CPU version — single-threaded, no vectorization, no BLAS. A properly optimized CPU implementation closes most of the gap against an unoptimized GPU kernel, showing that a large share of the original CPU-vs-GPU speedup was really "optimized vs unoptimized," not purely a hardware advantage.
+
 ## Implementation notes
 
 - cuBLAS is column-major; this codebase is row-major throughout. Rather than transposing data, the standard trick of computing `(A×B)ᵀ = Bᵀ×Aᵀ` is used — swapping argument order in `cublasSgemm` so the row-major/column-major reinterpretation cancels out correctly without any data movement.
 - All four versions are verified against each other using the same all-1s test matrices, where every correct output element must equal `K` (1024).
+- The CPU (BLAS) version uses `float` (required by `cblas_sgemm`), while the naive CPU/GPU and tiled GPU versions use `int`. cuBLAS and CPU (BLAS) are directly comparable (both `float`); the naive/tiled versions differ in this respect.
 
 ## Build
 
