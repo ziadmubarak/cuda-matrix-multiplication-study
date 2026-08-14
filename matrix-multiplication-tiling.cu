@@ -12,7 +12,7 @@ __global__ void matrix_multiplication(int *dev_A, int *dev_B, int *dev_C, int M,
     __shared__ int tileA[TILE_WIDTH][TILE_WIDTH];
     __shared__ int tileB[TILE_WIDTH][TILE_WIDTH];
 
-     int sum = 0;
+    int sum = 0;
     if (row < M) {
         if (col < N) {
             for(int k = 0; k <= ((K / TILE_WIDTH) - 1); k+=1) {

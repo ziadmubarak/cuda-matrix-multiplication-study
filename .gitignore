@@ -3,3 +3,5 @@
 *.exp
 *.lib
 *.pdb
+
+libopenblas.dll
